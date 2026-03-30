@@ -333,8 +333,106 @@
         }
 
         .celebrate {
-            font-size: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .celebrate img {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+            transition: transform 0.3s ease;
+        }
+
+        .celebrate img:hover {
+            transform: scale(1.1) translateY(-5px);
+        }
+
+        /* タイマー */
+        #timer-display {
+            font-size: 1.2rem;
+            color: #FF6B6B;
+            font-weight: 800;
+        }
+
+        /* 結果画面のタイム表示 */
+        .result-time-box {
+            background-color: #FFF9C4;
+            border: 2px solid #FBC02D;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 300px;
+            text-align: center;
+        }
+
+        .result-time-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #F57F17;
             margin-bottom: 10px;
+        }
+
+        .result-time {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #FF6B6B;
+        }
+
+        /* ランキング画面 */
+        .ranking-item {
+            background-color: #FFF;
+            border: 3px solid var(--primary);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.1rem;
+            font-weight: 800;
+        }
+
+        .ranking-item.first {
+            background-color: #FFD700;
+            border-color: #FFA500;
+        }
+
+        .ranking-item.second {
+            background-color: #C0C0C0;
+            border-color: #808080;
+        }
+
+        .ranking-item.third {
+            background-color: #CD7F32;
+            border-color: #8B4513;
+            color: #fff;
+        }
+
+        .ranking-medal {
+            font-size: 1.8rem;
+            margin-right: 10px;
+        }
+
+        .ranking-info {
+            flex: 1;
+        }
+
+        .ranking-score-time {
+            text-align: right;
+            font-size: 1rem;
+            color: #666;
+        }
+
+        .ranking-item.first .ranking-score-time,
+        .ranking-item.second .ranking-score-time,
+        .ranking-item.third .ranking-score-time {
+            color: inherit;
         }
 
         @media (max-width: 500px) {
@@ -421,7 +519,12 @@
         <div id="title-screen" class="screen active">
             <h1>算数ぼうけん</h1>
             <p>算数の世界へ<br>ぼうけんにでかけよう！</p>
-            <div class="celebrate">🚀 🦁 🎓</div>
+            <div class="celebrate">
+                <img src="images/char1.png" alt="キャラクター1">
+                <img src="images/char2.png" alt="キャラクター2">
+                <img src="images/char3.png" alt="キャラクター3">
+                <img src="images/char4.png" alt="キャラクター4">
+            </div>
             <button class="btn start-btn" onclick="showScreen('character-screen')">スタート！</button>
         </div>
 
@@ -450,6 +553,7 @@
         <div id="quiz-screen" class="screen">
             <div class="quiz-header">
                 <span id="current-unit-name">小数の計算</span>
+                <span id="timer-display" style="color: #FF6B6B; font-weight: 800;">0:00</span>
                 <span id="question-progress">1 / 5 問</span>
             </div>
             
@@ -494,8 +598,30 @@
                 よくがんばったね！
             </div>
 
+            <div class="result-time-box">
+                <div class="result-time-title">⚡　タイム</div>
+                <div class="result-time" id="result-time">0分 0秒</div>
+            </div>
+
+            <button class="btn start-btn" style="background-color: #FF6B6B; box-shadow: 0 6px 0 #D32F2F;" onclick="restartQuiz()">リスタート！</button>
+            <button class="btn start-btn" onclick="showRanking()">ランキングをみる</button>
             <button class="btn start-btn" onclick="showScreen('unit-screen')">マップへもどる</button>
             <button class="btn" style="background-color: #9E9E9E; box-shadow: 0 6px 0 #616161;" onclick="showScreen('title-screen')">はじめから</button>
+        </div>
+
+        <!-- ランキング画面 -->
+        <div id="ranking-screen" class="screen">
+            <h2>ランキング  🏆</h2>
+            <div id="ranking-content" style="width: 100%; max-width: 450px; margin: 20px auto;">
+                <div id="ranking-list" style="text-align: left;">
+                    <!-- ランキングアイテムが生成される -->
+                </div>
+                <div id="no-ranking" style="text-align: center; color: #999; padding: 30px;">
+                    まだランキングがありません
+                </div>
+            </div>
+            <button class="btn start-btn" onclick="clearRanking()" style="background-color: #f44336; box-shadow: 0 6px 0 #c62828;">ランキングをリセット</button>
+            <button class="btn" style="background-color: #9E9E9E; box-shadow: 0 6px 0 #616161;" onclick="showScreen('result-screen')">もどる</button>
         </div>
 
     </div>
@@ -8047,13 +8173,18 @@
         let score = 0;
         let canAnswer = true;
         let currentQuestions = [];
+        
+        // タイマー関連の変数
+        let timerInterval = null;
+        let timerSeconds = 0;
+        let currentUnitName = '';
 
         // キャラクターデータ
         const gameCharacters = [
-            { id: 1, name: "ニンジャ", image: "images/char1.png" },
-            { id: 2, name: "まほうつかい", image: "images/char2.png" },
-            { id: 3, name: "お坊さん", image: "images/char3.png" },
-            { id: 4, name: "ガンナー", image: "images/char4.png" }
+            { id: 1, name: "シャオラン", image: "images/char1.png" },
+            { id: 2, name: "イブキ", image: "images/char2.png" },
+            { id: 3, name: "サットヴァ", image: "images/char3.png" },
+            { id: 4, name: "孫市", image: "images/char4.png" }
         ];
         let currentSelectedCharacter = null;
 
@@ -8170,6 +8301,7 @@
         // クイズ開始
         function startQuiz(unitId, unitName, quizType) {
             currentUnitId = unitId;
+            currentUnitName = unitName;
             currentQuizType = quizType;
             let allQuestions = quizData[unitId] || [];
             
@@ -8184,7 +8316,11 @@
 
             currentQuestionIndex = 0;
             score = 0;
+            timerSeconds = 0;
             document.getElementById('current-unit-name').innerText = unitName;
+            
+            // タイマーを開始
+            startTimer();
             
             showQuestion();
             showScreen('quiz-screen');
@@ -8358,7 +8494,15 @@
 
         // 結果画面の表示
         function showResult() {
+            // タイマーを停止
+            stopTimer();
+            
             document.getElementById('score-text').innerText = score;
+            
+            // タイムを表示
+            const minutes = Math.floor(timerSeconds / 60);
+            const seconds = timerSeconds % 60;
+            document.getElementById('result-time').innerText = `${minutes}分 ${seconds}秒`;
             
             const msgObj = document.getElementById('result-message');
             if (score === 100) {
@@ -8374,8 +8518,127 @@
                 msgObj.innerText = "またチャレンジしよう！💪";
                 msgObj.style.color = "#E91E63";
             }
+            
+            // ランキングに記録
+            saveRanking(score, timerSeconds, currentSelectedCharacter.name, currentUnitId, currentUnitName);
 
             showScreen('result-screen');
+        }
+
+        // タイマー関連の関数
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timerSeconds / 60);
+            const seconds = timerSeconds % 60;
+            const secondsStr = seconds < 10 ? `0${seconds}` : seconds;
+            document.getElementById('timer-display').innerText = `${minutes}:${secondsStr}`;
+        }
+
+        // ランキング管理関数
+        function saveRanking(score, time, characterName, unitId, unitName) {
+            const key = `gameRankings_${unitId}`;
+            let rankings = JSON.parse(localStorage.getItem(key)) || [];
+            
+            const record = {
+                score: score,
+                time: time,
+                character: characterName,
+                date: new Date().toLocaleDateString('ja-JP')
+            };
+            
+            rankings.push(record);
+            // スコアが高い順、スコアが同じ場合は時間が短い順でソート
+            rankings.sort((a, b) => {
+                if (a.score !== b.score) {
+                    return b.score - a.score;
+                }
+                return a.time - b.time;
+            });
+            
+            // 上位20件まで保存
+            rankings = rankings.slice(0, 20);
+            localStorage.setItem(key, JSON.stringify(rankings));
+        }
+
+        function showRanking() {
+            const key = `gameRankings_${currentUnitId}`;
+            const rankings = JSON.parse(localStorage.getItem(key)) || [];
+            const rankingList = document.getElementById('ranking-list');
+            const noRanking = document.getElementById('no-ranking');
+            
+            // タイトルに単元名を表示
+            const titleElement = document.querySelector('#ranking-screen h2');
+            titleElement.innerText = `${currentUnitName} ランキング 🏆`;
+            
+            if (rankings.length === 0) {
+                rankingList.innerHTML = '';
+                noRanking.style.display = 'block';
+            } else {
+                noRanking.style.display = 'none';
+                rankingList.innerHTML = '';
+                
+                rankings.forEach((record, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'ranking-item';
+                    
+                    let medal = '';
+                    if (index === 0) {
+                        div.classList.add('first');
+                        medal = '🥇';
+                    } else if (index === 1) {
+                        div.classList.add('second');
+                        medal = '🥈';
+                    } else if (index === 2) {
+                        div.classList.add('third');
+                        medal = '🥉';
+                    }
+                    
+                    const minutes = Math.floor(record.time / 60);
+                    const seconds = record.time % 60;
+                    const timeStr = `${minutes}分${seconds}秒`;
+                    
+                    div.innerHTML = `
+                        <div>
+                            <span class="ranking-medal">${medal}</span>
+                            <span class="ranking-info">${index + 1}位: ${record.character}</span>
+                        </div>
+                        <div class="ranking-score-time">
+                            <div>${record.score}点</div>
+                            <div>${timeStr}</div>
+                            <div style="font-size: 0.8rem;">${record.date}</div>
+                        </div>
+                    `;
+                    rankingList.appendChild(div);
+                });
+            }
+            
+            showScreen('ranking-screen');
+        }
+
+        function clearRanking() {
+            const key = `gameRankings_${currentUnitId}`;
+            if (confirm(`${currentUnitName}のランキングを本当にリセットしてもいいですか？`)) {
+                localStorage.removeItem(key);
+                showRanking();
+            }
+        }
+
+        function restartQuiz() {
+            startQuiz(currentUnitId, currentUnitName, currentQuizType);
         }
 
         // アプリ起動
